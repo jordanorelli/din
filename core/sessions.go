@@ -62,7 +62,7 @@ func (d defaultSessionHandler) Set(id string, s Session) error {
 
 func (d defaultSessionHandler) Delete(id string) error {
 	delete(d, id)
-    return nil
+	return nil
 }
 
 func init() {

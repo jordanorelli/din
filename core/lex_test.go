@@ -69,7 +69,7 @@ var lexTests = []struct {
 	{`/users/{id}`, `[
         ["/users/{id}", "route"]
     ]`},
-    {`/help = template("help.html")`, `[
+	{`/help = template("help.html")`, `[
         ["/help", "route"],
         ["=", "assignment"],
         ["template", "symbol"],
@@ -120,7 +120,7 @@ var lexTests = []struct {
         [",", "elemSeparator"],
         ["}", "hashEnd"]
     ]`},
-    {`/static = dir("staticfiles")`, `[
+	{`/static = dir("staticfiles")`, `[
         ["/static", "route"],
         ["=", "assignment"],
         ["dir", "symbol"],
@@ -128,7 +128,7 @@ var lexTests = []struct {
         ["staticfiles", "string"],
         [")", "argsEnd"]
     ]`},
-    {`files[
+	{`files[
         "robots.txt",
         "humans.txt",
         "favicon.ico",

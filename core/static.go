@@ -27,7 +27,7 @@ func (r *Router) WhiteList(relpath string) {
 
 func (r *Router) TryStatic(w http.ResponseWriter, req *Request) error {
 	if StaticRoot == "" {
-        return InternalServerError("static root isn't set")
+		return InternalServerError("static root isn't set")
 	}
 	for _, p := range r.staticPaths {
 		if p.MatchString(req.Request.URL.Path) {

@@ -165,8 +165,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, raw *http.Request) {
 }
 
 func (r *Router) ListenAndServe(addr string) {
-    server := &http.Server{Addr: addr, Handler: r}
-    server.ListenAndServe()
+	server := &http.Server{Addr: addr, Handler: r}
+	server.ListenAndServe()
 }
 
 // transforms an incoming http.Request into a din.Request.  If a route match is

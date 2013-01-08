@@ -24,22 +24,6 @@ const (
 	CONCATENATION_CHAR              = '+'
 )
 
-type lexError struct {
-	msg   string
-	inner error
-}
-
-func newLexError(msg string, inner error) error {
-	return &lexError{msg, inner}
-}
-
-func (l lexError) Error() string {
-	if l.inner == nil {
-		return l.msg
-	}
-	return fmt.Sprintf("%v: %v", l.msg, l.inner)
-}
-
 type tokenType int
 
 const (
@@ -57,6 +41,7 @@ const (
 	hashSeparatorToken // :
 	assignmentToken    // =
 	concatenationToken // +
+	endToken
 )
 
 var tokenNames = map[tokenType]string{
@@ -74,6 +59,7 @@ var tokenNames = map[tokenType]string{
 	hashSeparatorToken: "hashSeparator",
 	assignmentToken:    "assignment",
 	concatenationToken: "concatenation",
+	endToken:           "end",
 }
 
 func (t tokenType) String() string {
@@ -107,7 +93,13 @@ func (l *lexer) emit(t tokenType) {
 
 func (l *lexer) next() error {
 	r, _, err := l.ReadRune()
-	if err != nil {
+	switch err {
+	case nil:
+		break
+	default:
+		return err
+	case io.EOF:
+		l.done()
 		return err
 	}
 	l.cur = r
@@ -118,6 +110,10 @@ func (l *lexer) next() error {
 		l.charCount++
 	}
 	return nil
+}
+
+func (l *lexer) done() {
+	l.out <- token{T: endToken}
 }
 
 func (l *lexer) unexpectedChar(stateName string) error {
@@ -272,19 +268,19 @@ func lexSymbol(l *lexer) (stateFn, error) {
 		l.emit(elemSeparatorToken)
 		return lexRoot, nil
 	case ARGS_START_CHAR:
-        l.emit(symbolToken)
-        l.keep()
-        l.emit(argsStartToken)
-        return lexRoot, nil
+		l.emit(symbolToken)
+		l.keep()
+		l.emit(argsStartToken)
+		return lexRoot, nil
 	case LIST_START_CHAR:
-        l.emit(symbolToken)
-        l.keep()
-        l.emit(listStartToken)
-        return lexRoot, nil
+		l.emit(symbolToken)
+		l.keep()
+		l.emit(listStartToken)
+		return lexRoot, nil
 	case HASH_START_CHAR:
-        l.emit(symbolToken)
-        l.keep()
-        l.emit(hashStartToken)
+		l.emit(symbolToken)
+		l.keep()
+		l.emit(hashStartToken)
 		return lexRoot, nil
 	}
 
@@ -298,7 +294,7 @@ func (l *lexer) keep() {
 	l.buf = append(l.buf, l.cur)
 }
 
-func lex(input io.RuneReader, c chan token, e *error) {
+func lex(input io.RuneReader, c chan token, e chan error) {
 	defer close(c)
 	l := &lexer{input, nil, ' ', c, 0, 0}
 
@@ -315,30 +311,30 @@ func lex(input io.RuneReader, c chan token, e *error) {
 		}
 	}
 
-	switch t := err.(type) {
-	case lexError:
-		if t.inner != io.EOF {
-			*e = t
-		}
+	switch err {
+	case nil, io.EOF:
+		break
 	default:
-		if err != io.EOF {
-			*e = newLexError(err.Error(), nil)
-		}
+		e <- err
 	}
 }
 
 // lexes from an io.RuneReader until EOF, returning all tokens as a token
 // slice.
 func lexAll(input io.RuneReader) ([]token, error) {
-	c := make(chan token)
+	c, e := make(chan token), make(chan error)
 	out := make([]token, 0, 32)
-	var err error
-	go lex(input, c, &err)
-	for t := range c {
-		out = append(out, t)
+	go lex(input, c, e)
+	for {
+		select {
+		case t := <-c:
+			out = append(out, t)
+			if t.T == endToken {
+				return out, nil
+			}
+		case err := <-e:
+			return nil, err
+		}
 	}
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+	panic("not reached")
 }

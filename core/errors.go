@@ -44,4 +44,3 @@ func StatusForbidden(format string, vals ...interface{}) error {
 		Message:    fmt.Sprintf(format, vals...),
 	}
 }
-
