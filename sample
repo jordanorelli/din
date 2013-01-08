@@ -1,0 +1,130 @@
+# this should give an idea of what routing might look like.  This is a comment;
+# it's not in any way read by the routing engine.  It's not documentation for
+# the sake of generated documentation, it's a comment in the code.
+
+/ = route{
+    name: "home",
+    doc: "this is the homepage",
+    # get: template("home.html"), # comments should be cool here, as should
+                                # trailing commas.
+}
+
+# /help = route{
+#     name: "help",
+#     doc: "this is the help page",
+#     get: template("help.html"),
+# }
+# 
+# # it should also be easy to just assign templates to a route.  I generally
+# # prefer all endpoints to be named in my projects, but some pages are so
+# # obvious that it's just silly.
+# /about-us = template("about.html")
+# 
+# # but if you don't need to go to through the template engine, then static is
+# # fine.
+# /contact-info = file("contact-info.html")
+# 
+# /flat-page = route{
+#     name: "flat_page_test",
+#     doc: `
+# 
+#         this one tests a flat page is working in the fancy style; it provides
+#         some multi-line documentation and all that jazz.  I don't know how I
+#         feel about this multi-line documentation style.  It seems a bit wonky
+#         to me.
+# 
+#         anyway, this shows how you could write such things as per-file caching
+#         in a reasonable manner, as well as per-route documentation that is very
+#         descriptive.  I find it very bothersome not having per-route
+#         documentation in other systems.  Api documentation should be
+#         auto-generated!  There isn't any plan for this type of cache option
+#         scheme, this is just to demonstrate syntax.
+# 
+#     `,
+#     get: file{
+#         path: "flat_page.html",
+#         cache_options: ["humans", "robots"],
+#     },
+# }
+# 
+# /u/{userid:int} = route{
+#     name: "user_profile",
+#     doc: "shows the profile of the user with the id @userid",
+#     require_ssl: true,
+#     get: UserProfileHandler,
+# }
+# 
+# # routes should be composable; they should be able to reference routes defined
+# # before them, since heirarchical routing is totally normal.  I'm on the fence
+# # about this syntax, it's a little weird to me.  How to handle the
+# # slash-separators is something that could invite a lot of confusion.
+# user_profile + media = route{
+#     name: "user_media",
+#     doc: "shows all the media posted by a particular user.",
+#     require_ssl: true,
+#     get: UserMediaHandler,
+# }
+# 
+# user_profile + friends = route{
+#     name: "user_friends",
+#     doc: "lists the friends for a particular user.",
+#     require_ssl: true,
+#     get: UserFriendsHandler,
+# }
+# 
+# # we should also have validators defind right here.  This one, for example,
+# # validates that the value is a hexadecimal number, without the developer
+# # having to write complicated regular expressions all over their route config.
+# /media/{mediaid:hex} = route{
+#     name: "media_detail",
+#     doc: "shows a page for an individual media item.",
+#     get: MediaDetailHandler,
+#     delete: MediaDeleteHandler,
+# }
+# 
+# # the combination thing is really hard.  I don't want to require strings around
+# # every route, because that's, quite honestly, a bit irritating, and this is a
+# # language specific to routing; the fact that we're creating url routes shoudl
+# # be implied throughought.
+# media_detail + caption = route{
+#     name: "media_caption",
+#     doc: "accesses the caption for a media item.",
+#     get: MediaCaptionHandler,
+#     put: UpdateMediaCaptionHandler,
+# }
+# 
+# # adding static files should be easy and painless.  This should handle GET and
+# # HEAD requests just fine.  We use square brackets because it's a list, not a
+# # dictionary.
+# files[
+#     "robots.txt",
+#     "humans.txt",
+#     "favicon.ico",
+# ]
+# 
+# # this should be the same:
+# file("robots.txt")
+# file("humans.txt")
+# file("favicon.ico")
+# 
+# # from another directory
+# /favicon.ico = file("static/assets/favicon.ico")
+# 
+# # of course, sometimes we don't want to keep these things at our project root.
+# # Here's a set of static files that are stored in a separate directory, for
+# # cleanliness, but are exposed at a different, more usable URL.  In this
+# # example, the files are stored in the directory staticfiles, which is in the
+# # project root.  file paths are relative to local_path.
+# /static = dir("staticfiles")
+# 
+# # this would be the same thing.
+# /static = dir{
+#     path: "staticfiles",
+# }
+# 
+# # but if we want to serve a directory outside of the project root, that should
+# # be easy, too.
+# /extras = dir{
+#     path: "/usr/local/public_extras",
+#     index: true, # whether or not we should generate an index.html file
+# }
