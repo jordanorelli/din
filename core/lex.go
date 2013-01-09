@@ -84,6 +84,19 @@ type lexer struct {
 	out       chan token
 	lineCount int
 	charCount int
+	state     stateFn
+}
+
+func newLexer(src io.RuneReader, c chan token) *lexer {
+	return &lexer{
+		RuneReader: src,
+		buf:        nil,
+		cur:        ' ',
+		out:        c,
+		lineCount:  0,
+		charCount:  0,
+		state:      lexRoot,
+	}
 }
 
 func (l *lexer) emit(t tokenType) {
@@ -296,7 +309,7 @@ func (l *lexer) keep() {
 
 func lex(input io.RuneReader, c chan token, e chan error) {
 	defer close(c)
-	l := &lexer{input, nil, ' ', c, 0, 0}
+	l := newLexer(input, c)
 
 	var err error
 	f := stateFn(lexRoot)
@@ -322,7 +335,7 @@ func lex(input io.RuneReader, c chan token, e chan error) {
 // lexes from an io.RuneReader until EOF, returning all tokens as a token
 // slice.
 func lexAll(input io.RuneReader) ([]token, error) {
-	c, e := make(chan token), make(chan error)
+	c, e := make(chan token, 2), make(chan error)
 	out := make([]token, 0, 32)
 	go lex(input, c, e)
 	for {
