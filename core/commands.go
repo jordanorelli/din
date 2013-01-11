@@ -63,6 +63,10 @@ func (c commandSet) Swap(i, j int)      { c.items[j], c.items[i] = c.items[i], c
 
 // done satisfying sort.Interface ----------------------------------------------
 
+// run runs the arguments presented to the commandSet.  This is typically going
+// to be the main entrypoint into a din application, since startserver should
+// be implmented as a subcommand, such that a developer can override the
+// default functionality should they so chose.
 func (c commandSet) run(args []string) {
 	for _, cmd := range c.items {
 		if cmd.Name() == args[0] {
@@ -93,9 +97,20 @@ func RegisterCommand(cmd Command) {
 	}
 }
 
-func ListCommands() {
-	t := "%s" + strconv.Itoa(cmdRegistry.nameMax) + "- %s"
-	for _, cmd := range cmdRegistry.items {
-		fmt.Printf(t, cmd.Name(), cmd.Short)
-	}
+func init() {
+	// something of a meta-command; listcommands will list all commands available
+	// to din and then exist.
+	RegisterCommand(Command{
+		UsageLine: "list-commands",
+		Short:     "lists all available commands",
+		Long: `
+the list-commands subcommand lists all available commands that have been registered with the Din framework core, sorted alphabetically by their subcommand name.  Also included is the command's short description.
+`,
+		Run: func(cmd *Command, args []string) {
+			t := "%-" + strconv.Itoa(cmdRegistry.nameMax) + "s : %s\n"
+			for _, cmd := range cmdRegistry.items {
+				fmt.Printf(t, cmd.Name(), strings.Trim(cmd.Short, " \n"))
+			}
+		},
+	})
 }
