@@ -27,7 +27,7 @@ const (
 type tokenType int
 
 const (
-	invalidToken tokenType = iota
+	errorToken tokenType = iota
 	routeToken
 	symbolToken        //
 	stringToken        //
@@ -45,7 +45,7 @@ const (
 )
 
 var tokenNames = map[tokenType]string{
-	invalidToken:       "invalid",
+	errorToken:         "error",
 	routeToken:         "route",
 	symbolToken:        "symbol",
 	stringToken:        "string",
@@ -75,6 +75,11 @@ type token struct {
 	T      tokenType
 }
 
+// mkErrorToken wraps an error object as a token
+func mkErrorToken(err error) token {
+	return token{Lexeme: err.Error(), T: errorToken}
+}
+
 type stateFn func(*lexer) (stateFn, error)
 
 type lexer struct {
@@ -87,12 +92,12 @@ type lexer struct {
 	state     stateFn
 }
 
-func newLexer(src io.RuneReader, c chan token) *lexer {
+func newLexer(src io.RuneReader) *lexer {
 	return &lexer{
 		RuneReader: src,
 		buf:        nil,
 		cur:        ' ',
-		out:        c,
+		out:        make(chan token, 2),
 		lineCount:  0,
 		charCount:  0,
 		state:      lexRoot,
@@ -104,6 +109,8 @@ func (l *lexer) emit(t tokenType) {
 	l.buf = nil
 }
 
+// next advances the input and stores the next rune in l.cur.  io.EOF is
+// surpressed; any other error is returned.
 func (l *lexer) next() error {
 	r, _, err := l.ReadRune()
 	switch err {
@@ -113,7 +120,7 @@ func (l *lexer) next() error {
 		return err
 	case io.EOF:
 		l.done()
-		return err
+		return nil
 	}
 	l.cur = r
 	if isLineEnding(r) {
@@ -123,6 +130,25 @@ func (l *lexer) next() error {
 		l.charCount++
 	}
 	return nil
+}
+
+func (l *lexer) nextToken() (token, error) {
+	var err error
+	for {
+		select {
+		case t := <-l.out:
+			return t, nil
+		default:
+			l.state, err = l.state(l)
+			if err != nil {
+				return mkErrorToken(err), err
+			}
+			if err := l.next(); err != nil {
+				return mkErrorToken(err), err
+			}
+		}
+	}
+	panic("not reached")
 }
 
 func (l *lexer) done() {
@@ -307,46 +333,18 @@ func (l *lexer) keep() {
 	l.buf = append(l.buf, l.cur)
 }
 
-func lex(input io.RuneReader, c chan token, e chan error) {
-	defer close(c)
-	l := newLexer(input, c)
-
-	var err error
-	f := stateFn(lexRoot)
-	for {
-		f, err = f(l)
-		if err != nil {
-			break
-		}
-		err = l.next()
-		if err != nil {
-			break
-		}
-	}
-
-	switch err {
-	case nil, io.EOF:
-		break
-	default:
-		e <- err
-	}
-}
-
 // lexes from an io.RuneReader until EOF, returning all tokens as a token
 // slice.
 func lexAll(input io.RuneReader) ([]token, error) {
-	c, e := make(chan token, 2), make(chan error)
-	out := make([]token, 0, 32)
-	go lex(input, c, e)
+	l, out := newLexer(input), make([]token, 0, 32)
 	for {
-		select {
-		case t := <-c:
-			out = append(out, t)
-			if t.T == endToken {
-				return out, nil
-			}
-		case err := <-e:
+		t, err := l.nextToken()
+		if err != nil {
 			return nil, err
+		}
+		out = append(out, t)
+		if t.T == endToken {
+			return out, nil
 		}
 	}
 	panic("not reached")

@@ -1,0 +1,9 @@
+[
+    {
+        "name": "home",
+        "spec": "/",
+        "doc": "this is the homepage",
+        "type": "simple",
+        "get": "HomeHandler"
+    }
+]
