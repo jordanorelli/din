@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"github.com/jordanorelli/din/core"
 )
 
 var (
@@ -10,5 +10,5 @@ var (
 )
 
 func main() {
-	fmt.Println(getPkgDir(importPath))
+	din.ParseAndRun()
 }

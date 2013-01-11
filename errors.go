@@ -1,10 +1,10 @@
 package main
 
 import (
-    "os"
+	"os"
 )
 
 func quit(code int, msg string) {
-    os.Stderr.WriteString(msg)
-    os.Exit(code)
+	os.Stderr.WriteString(msg)
+	os.Exit(code)
 }
