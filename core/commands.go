@@ -42,13 +42,20 @@ func (c *Command) Name() string {
 
 // Usage prints out the command's usage line to stderr and aborts.
 func (c *Command) Usage() {
-	fmt.Fprintf(os.Stderr, "usage: %s\n", c.Short)
+	fmt.Fprintf(os.Stderr, "usage: %s\n", c.UsageLine)
+	os.Exit(2)
 }
 
 // Runnable reports whether the command can be run; otherwise it is a
 // documentation pseudo-command
 func (c *Command) Runnable() bool {
 	return c.Run != nil
+}
+
+func (c *Command) Bail(err error) {
+	s := strings.TrimRight(err.Error(), " \n") + "\n"
+	os.Stderr.WriteString(s)
+	os.Exit(2)
 }
 
 type commandSet struct {
@@ -71,7 +78,7 @@ func (c commandSet) run(args []string) {
 	for _, cmd := range c.items {
 		if cmd.Name() == args[0] {
 			if cmd.Runnable() {
-				cmd.Run(nil, args[1:])
+				cmd.Run(&cmd, args[1:])
 				return
 			} else {
 				fmt.Println(strings.Trim(cmd.Long, " \n"))

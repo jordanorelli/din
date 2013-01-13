@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,4 +79,43 @@ func getPkgDir(importPath string) string {
 		return ""
 	}
 	return dirs[0]
+}
+
+// copyTree copies the file tree rooted at src into the directory dest.  I'm
+// not really sure how strong of an implementation this is; I can reasonbly see
+// it having problems involving permissions and alternative file types (e.g.,
+// if the source directory contains symlinks, hard links, named pipes, unix
+// sockets, or other special files, I'm fairly certain this function will not
+// behave as intended.)
+func copyTree(srcDir, destDir string) error {
+	dirMode := os.FileMode(os.ModeDir | 0777)
+	walkFn := func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+		dest := filepath.Join(destDir, rel)
+		if info.IsDir() {
+			if err := os.Mkdir(dest, dirMode); err != nil {
+				return err
+			}
+		} else {
+			destFile, err := os.Create(dest)
+			if err != nil {
+				return err
+			}
+			srcFile, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(destFile, srcFile); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return filepath.Walk(srcDir, walkFn)
 }
