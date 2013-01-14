@@ -44,6 +44,9 @@ func ProxyResponse(res *http.Response) Response {
 	return &proxyResponse{res}
 }
 
+// PlaintextResponse represents a ... plaintext response, in HTTP format.  This
+// will output the contents of the io.Reader to an http.ResponseWriter, setting
+// the content-type to text/plain, and using the desired StatusCode.
 type PlaintextResponse struct {
 	io.Reader
 	StatusCode int
@@ -65,7 +68,7 @@ func (res *PlaintextResponse) Status() int {
 	return res.StatusCode
 }
 
-func BufferedPlaintextResponse(s string, code int) Response {
+func PlaintextResponseString(s string, code int) Response {
 	return &PlaintextResponse{strings.NewReader(s), code}
 }
 

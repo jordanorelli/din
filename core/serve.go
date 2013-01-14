@@ -11,6 +11,5 @@ func ParseAndRun() {
 		flag.Usage()
 		return
 	}
-
 	cmdRegistry.run(args)
 }

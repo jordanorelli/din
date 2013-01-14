@@ -81,21 +81,21 @@ func (r *Request) Timestamp(name string, required bool) (time.Time, error) {
 	return time.Unix(val, 0), nil
 }
 
-func (r *Request) UsingSsl() bool {
+func (r *Request) UsingSSL() bool {
 	header := r.Header.Get("X-Forwarded-Ssl")
 	ret := (header != "" && header == "on")
 	return ret
 }
 
 func (r *Request) Abspath(relpath string) string {
-	if r.UsingSsl() {
+	if r.UsingSSL() {
 		return "https://" + path.Join(r.Host, relpath)
 	}
 	return "http://" + path.Join(r.Host, relpath)
 }
 
 func (r *Request) Addpath(relpath string) string {
-	if r.UsingSsl() {
+	if r.UsingSSL() {
 		return "https://" + path.Join(r.Host, r.URL.Path, relpath)
 	}
 	return "http://" + path.Join(r.Host, r.URL.Path, relpath)

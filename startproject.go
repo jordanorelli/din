@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/jordanorelli/din/core"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -28,7 +30,33 @@ the startproject subcommand creates a new din project, including config and rout
 			if err != nil {
 				cmd.Bail(err)
 			}
-			if err := copyTree(srcRoot, filepath.Join(cwd, args[0])); err != nil {
+			destRoot := filepath.Join(cwd, args[0])
+			if err := copyTree(srcRoot, destRoot); err != nil {
+				cmd.Bail(err)
+			}
+			if err := os.Chdir(destRoot); err != nil {
+				cmd.Bail(err)
+			}
+			cwd, err = os.Getwd()
+			if err != nil {
+				cmd.Bail(err)
+			}
+			build := exec.Command("go", "build")
+			if err := build.Run(); err != nil {
+				cmd.Bail(err)
+			}
+			runserver := exec.Command("./"+args[0], "runserver")
+			stdout, err := runserver.StdoutPipe()
+			if err != nil {
+				cmd.Bail(err)
+			}
+			stderr, err := runserver.StderrPipe()
+			if err != nil {
+				cmd.Bail(err)
+			}
+			go io.Copy(os.Stdout, stdout)
+			go io.Copy(os.Stderr, stderr)
+			if err := runserver.Run(); err != nil {
 				cmd.Bail(err)
 			}
 		},

@@ -53,6 +53,8 @@ func (c *Command) Runnable() bool {
 }
 
 func (c *Command) Bail(err error) {
+	fmt.Println("fuck we're bailing")
+	fmt.Println(err)
 	s := strings.TrimRight(err.Error(), " \n") + "\n"
 	os.Stderr.WriteString(s)
 	os.Exit(2)

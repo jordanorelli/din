@@ -5,13 +5,9 @@ import (
 )
 
 func HomeHandler(req *din.Request) (din.Response, error) {
-    return din.PlaintextResponse("Hello"), nil
+    return din.PlaintextResponseString("Hello, World!", 200), nil
 }
 
 func main() {
-    din.Run()
-}
-
-func init() {
-    din.RegisterHandler("HomeHandler", HomeHandler)
+    din.ParseAndRun()
 }
