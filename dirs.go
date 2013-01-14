@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -81,6 +82,39 @@ func getPkgDir(importPath string) string {
 	return dirs[0]
 }
 
+const dirMode = os.FileMode(os.ModeDir | 0777)
+
+// mkdir creates a directory at the given path if it does not exist
+func mkdir(path string) error {
+	if err := os.Mkdir(path, dirMode); err != nil {
+		return err
+	}
+	fmt.Println("[+]", path+"/")
+	return nil
+}
+
+// copyFile copies the file found at the path "src" to the destination path
+// "dest".  This isn't a particularly strong implementation, and oversimplifies
+// the whole file copying thing.  Apple's file copy code is something
+// ridiculous like 3k lines of C.  This doesn't even bother to check for things
+// like named pipes, symlinks, unix sockets, or any of that crap, so... don't
+// copy this into some other project carelessly.
+func copyFile(src, dest string) error {
+	destFile, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(destFile, srcFile); err != nil {
+		return err
+	}
+	fmt.Println("[+]", dest)
+	return nil
+}
+
 // copyTree copies the file tree rooted at src into the directory dest.  I'm
 // not really sure how strong of an implementation this is; I can reasonbly see
 // it having problems involving permissions and alternative file types (e.g.,
@@ -88,7 +122,6 @@ func getPkgDir(importPath string) string {
 // sockets, or other special files, I'm fairly certain this function will not
 // behave as intended.)
 func copyTree(srcDir, destDir string) error {
-	dirMode := os.FileMode(os.ModeDir | 0777)
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -99,19 +132,11 @@ func copyTree(srcDir, destDir string) error {
 		}
 		dest := filepath.Join(destDir, rel)
 		if info.IsDir() {
-			if err := os.Mkdir(dest, dirMode); err != nil {
+			if err := mkdir(dest); err != nil {
 				return err
 			}
 		} else {
-			destFile, err := os.Create(dest)
-			if err != nil {
-				return err
-			}
-			srcFile, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(destFile, srcFile); err != nil {
+			if err := copyFile(path, dest); err != nil {
 				return err
 			}
 		}

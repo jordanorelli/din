@@ -9,6 +9,25 @@ import (
 	"path/filepath"
 )
 
+// runCmd runs a shell command, piping its standard streams into stdout and
+// stderr, making them visible to the calling shell.  If it cannot connect to
+// os.Stdout or os.Stderr, there is no notification of failure, so this isn't a
+// very good implementation.
+func runCmd(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	if out, err := cmd.StdoutPipe(); err != nil {
+		return err
+	} else {
+		go io.Copy(os.Stdout, out)
+	}
+	if errOut, err := cmd.StderrPipe(); err != nil {
+		return err
+	} else {
+		go io.Copy(os.Stderr, errOut)
+	}
+	return cmd.Run()
+}
+
 func init() {
 	din.RegisterCommand(din.Command{
 		UsageLine: "startproject [project_name]",
@@ -37,26 +56,12 @@ the startproject subcommand creates a new din project, including config and rout
 			if err := os.Chdir(destRoot); err != nil {
 				cmd.Bail(err)
 			}
-			cwd, err = os.Getwd()
-			if err != nil {
+			fmt.Println("compiling project", args[0])
+			if err := runCmd("go", "build"); err != nil {
 				cmd.Bail(err)
 			}
-			build := exec.Command("go", "build")
-			if err := build.Run(); err != nil {
-				cmd.Bail(err)
-			}
-			runserver := exec.Command("./"+args[0], "runserver")
-			stdout, err := runserver.StdoutPipe()
-			if err != nil {
-				cmd.Bail(err)
-			}
-			stderr, err := runserver.StderrPipe()
-			if err != nil {
-				cmd.Bail(err)
-			}
-			go io.Copy(os.Stdout, stdout)
-			go io.Copy(os.Stderr, stderr)
-			if err := runserver.Run(); err != nil {
+			fmt.Println("starting Din webserver...")
+			if err := runCmd("./"+args[0], "runserver"); err != nil {
 				cmd.Bail(err)
 			}
 		},
