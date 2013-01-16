@@ -45,6 +45,10 @@ func StatusForbidden(format string, vals ...interface{}) error {
 	}
 }
 
+func ErrUnknownHandler(name string) error {
+	return errors.New("unknown handler " + name)
+}
+
 func ErrorStage(err error) Stage {
 	return func(*Request) (Response, error) {
 		return nil, err

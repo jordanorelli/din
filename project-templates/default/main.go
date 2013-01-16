@@ -11,3 +11,7 @@ func HomeHandler(req *din.Request) (din.Response, error) {
 func main() {
 	din.ParseAndRun()
 }
+
+func init() {
+	din.RegisterHandler("HomeHandler", HomeHandler)
+}

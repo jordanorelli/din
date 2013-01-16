@@ -1,12 +1,12 @@
 package din
 
 import (
-	"encoding/json"
-	// "bytes"
-	// "fmt"
-	// "io"
-	// "io/ioutil"
-	"os"
+// "encoding/json"
+// "bytes"
+// "fmt"
+// "io"
+// "io/ioutil"
+// "os"
 )
 
 // type parseError string
@@ -108,19 +108,6 @@ import (
 //         }
 //     }
 // }
-
-func ParseRouteFile(filename string) (*Router, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, InternalServerError("din: unable to read route config")
-	}
-
-	var rte Router
-	if err := json.NewDecoder(f).Decode(&rte); err != nil {
-		return nil, err
-	}
-	return &rte, nil
-}
 
 // func parse(src io.RuneReader) (*Router, error) {
 // 	tokens, err := lexAll(src)

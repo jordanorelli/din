@@ -1,0 +1,8 @@
+[
+    {
+        "route": "^/$",
+        "name": "Home",
+        "doc": "this is the homepage",
+        "handlers": ["HomeHandler"]
+    }
+]

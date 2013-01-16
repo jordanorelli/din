@@ -47,6 +47,10 @@ type Pipeline struct {
 	Handlers []Stage `json:"handlers"`
 }
 
+func (p *Pipeline) String() string {
+	return fmt.Sprintf("{Pipeline Name: %s, Handlers: %v}", p.Name, p.Handlers)
+}
+
 func NewRouter(errorHandler ErrorHandler, panicHandler PanicHandler) *Router {
 	if errorHandler == nil {
 		errorHandler = DefaultErrorHandler
@@ -195,6 +199,19 @@ func (r *Router) match(raw *http.Request) *Request {
 
 type Stage func(*Request) (Response, error)
 
+func (s *Stage) UnmarshalJSON(b []byte) error {
+	var name string
+	if err := json.Unmarshal(b, &name); err != nil {
+		return err
+	}
+	found, ok := getHandler(name)
+	if !ok {
+		return ErrUnknownHandler(name)
+	}
+	*s = found
+	return nil
+}
+
 // a Response is any struct that can be Rendered into an http response.
 type Response interface {
 	Render(http.ResponseWriter) error
@@ -252,7 +269,11 @@ func (r *Route) Match(target string) *RouteMatch {
 }
 
 func (r *Route) UnmarshalJSON(b []byte) error {
-	regex, err := regexp.Compile(string(b))
+	var pattern string
+	if err := json.Unmarshal(b, &pattern); err != nil {
+		return err
+	}
+	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return err
 	}
@@ -349,4 +370,23 @@ func (m VerbMux) Stage() Stage {
 		}
 		return nil, ErrBadMethod
 	}
+}
+
+// ParseRouteFile takes a path to a routes configuration file and returns a
+// valid Router if it is able.  Otherwise, an error is returned.  Right now,
+// the only supported format is json, which is a terrible format.
+func ParseRouteFile(path string) (*Router, error) {
+	fi, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer fi.Close()
+
+	routes := make([]*Pipeline, 0)
+	if err := json.NewDecoder(fi).Decode(&routes); err != nil {
+		return nil, err
+	}
+	router := NewRouter(nil, nil)
+	router.routes = routes
+	return router, nil
 }
