@@ -20,10 +20,19 @@ var CSRFKey = "_din_csrf"
 // map[string]string called kwargs representing the named parameters captured
 // in url parsing.
 type Request struct {
+	// raw http request as accepted by the Din application server
 	*http.Request
+
+	// pointer to the route that satisfied the route filters for this http request
 	*RouteMatch
-	Id          RequestId
-	Received    time.Time
+
+	// each request is given an Id for log purposes.  The Id format is actually
+	// the same as the mongodb Id format.
+	Id RequestId
+
+	// time that the request was received.
+	Received time.Time
+
 	logmux      sync.Mutex
 	s           Session
 	sessionKey  string
@@ -152,8 +161,7 @@ func (r *Request) Logf(format string, v ...interface{}) {
 	fmt.Printf(format, v...)
 }
 
-// TODO: rename to UnmarshalJSON throughout
-func (r *Request) Decode(v interface{}) error {
+func (r *Request) UnmarshalJSON(v interface{}) error {
 	err := json.NewDecoder(r.Body).Decode(v)
 	if err != nil {
 		return Error{

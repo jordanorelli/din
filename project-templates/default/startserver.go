@@ -2,8 +2,7 @@ package main
 
 import (
 	"github.com/jordanorelli/din/core"
-    "os"
-	"net/http"
+	"os"
 )
 
 func init() {
@@ -19,14 +18,10 @@ great.
 		Run: func(cmd *din.Command, args []string) {
 			router := din.NewRouter(nil, nil)
 			router.AddRoute("^/$", "HomeHandler", HomeHandler)
-			server := http.Server{
-				Addr:    ":8000",
-				Handler: router,
+			if err := router.ListenAndServe(":8000"); err != nil {
+				os.Stderr.WriteString(err.Error())
+				os.Exit(3)
 			}
-            if err := server.ListenAndServe(); err != nil {
-                os.Stderr.WriteString(err.Error())
-                os.Exit(3)
-            }
 		},
 	})
 }

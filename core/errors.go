@@ -44,3 +44,9 @@ func StatusForbidden(format string, vals ...interface{}) error {
 		Message:    fmt.Sprintf(format, vals...),
 	}
 }
+
+func ErrorStage(err error) Stage {
+	return func(*Request) (Response, error) {
+		return nil, err
+	}
+}

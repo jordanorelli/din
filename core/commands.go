@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+// a Command defines an entry point for command-line executables, to be used as
+// subcommands to the application's main command.  E.g., a Din project named
+// "stanley" might have a command named "runserver", which would be invoked on
+// the command line as "stanley runserver"
 type Command struct {
 	// UsageLine is the one-line usage message.
 	// The first word in the line is taken to be the command name.
@@ -31,6 +35,7 @@ type Command struct {
 	CustomFlags bool
 }
 
+// returns the name of the subcommand.
 func (c *Command) Name() string {
 	name := c.UsageLine
 	i := strings.Index(name, " ")
@@ -52,14 +57,16 @@ func (c *Command) Runnable() bool {
 	return c.Run != nil
 }
 
+// Bail is a convenience function for aborting a command.  The error is written
+// to stderr and the application exists.
 func (c *Command) Bail(err error) {
-	fmt.Println("fuck we're bailing")
-	fmt.Println(err)
 	s := strings.TrimRight(err.Error(), " \n") + "\n"
 	os.Stderr.WriteString(s)
 	os.Exit(2)
 }
 
+// commandSet is used to group commands to be used by a user.  The commands are
+// sorted lexicographically upon insertion.
 type commandSet struct {
 	items   []Command
 	nameMax int
@@ -72,23 +79,29 @@ func (c commandSet) Swap(i, j int)      { c.items[j], c.items[i] = c.items[i], c
 
 // done satisfying sort.Interface ----------------------------------------------
 
+func (c commandSet) getCommand(name string) *Command {
+	for _, cmd := range c.items {
+		if cmd.Name() == name {
+			return &cmd
+		}
+	}
+	return nil
+}
+
 // run runs the arguments presented to the commandSet.  This is typically going
 // to be the main entrypoint into a din application, since startserver should
 // be implmented as a subcommand, such that a developer can override the
 // default functionality should they so chose.
 func (c commandSet) run(args []string) {
-	for _, cmd := range c.items {
-		if cmd.Name() == args[0] {
-			if cmd.Runnable() {
-				cmd.Run(&cmd, args[1:])
-				return
-			} else {
-				fmt.Println(strings.Trim(cmd.Long, " \n"))
-				return
-			}
-		}
+	cmd := c.getCommand(args[0])
+	if cmd == nil {
+		panic("no command found")
 	}
-	panic("no command found")
+	if cmd.Runnable() {
+		cmd.Run(cmd, args[1:])
+		return
+	}
+	fmt.Println(strings.Trim(cmd.Long, " \n"))
 }
 
 // holds all of the known commands, to be populated at runtime.
@@ -107,7 +120,7 @@ func RegisterCommand(cmd Command) {
 }
 
 func init() {
-	// something of a meta-command; listcommands will list all commands available
+	// something of a meta-command; list-commands will list all commands available
 	// to din and then exist.
 	RegisterCommand(Command{
 		UsageLine: "list-commands",

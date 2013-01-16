@@ -19,7 +19,9 @@ import (
 const PanicDepth = 3
 
 type PanicHandler func(http.ResponseWriter, *Request, chan struct{})
+
 type ErrorHandler func(http.ResponseWriter, *Request, error)
+
 type NotFoundHandler func(http.ResponseWriter, *Request)
 
 // struct Router implements http.Handler, so that it may be used with the
@@ -35,13 +37,16 @@ type Router struct {
 	started         time.Time
 }
 
+// struct Pipeline defines a series of handlers to be registered for a given
+// URL pattern.  The http request is passed to each subsequent "stage" in the
+// pipeline.
 type Pipeline struct {
-	route    *Route
-	name     string
-	handlers []Stage
+	Route    *Route  `json:"route"`
+	Name     string  `json:"name"`
+	Doc      string  `json:"doc"`
+	Handlers []Stage `json:"handlers"`
 }
 
-// this doesn't really do anything yet, but it probably will in the future.
 func NewRouter(errorHandler ErrorHandler, panicHandler PanicHandler) *Router {
 	if errorHandler == nil {
 		errorHandler = DefaultErrorHandler
@@ -121,7 +126,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, raw *http.Request) {
 
 	go func() {
 		defer r.OnPanic(w, req, p)
-		for _, fn := range req.Pipeline.handlers {
+		for _, fn := range req.Pipeline.Handlers {
 			res, err := fn(req)
 			if err != nil {
 				errchan <- err
@@ -134,7 +139,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, raw *http.Request) {
 		}
 	}()
 
-	req.Logf("route: %v", req.RouteMatch.Pipeline.name)
+	req.Logf("route: %v", req.RouteMatch.Pipeline.Name)
 
 	select {
 	case <-time.After(30 * time.Second):
@@ -142,7 +147,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, raw *http.Request) {
 		w.Write([]byte("herp derp, i timed out"))
 		req.LogTimeout()
 	case res := <-c:
-		// res.Request = raw
 		if req.newSession {
 			setSessionId(w, req.sessionKey)
 		}
@@ -164,9 +168,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, raw *http.Request) {
 	}
 }
 
-func (r *Router) ListenAndServe(addr string) {
+func (r *Router) ListenAndServe(addr string) error {
 	server := &http.Server{Addr: addr, Handler: r}
-	server.ListenAndServe()
+	return server.ListenAndServe()
 }
 
 // transforms an incoming http.Request into a din.Request.  If a route match is
@@ -180,7 +184,7 @@ func (r *Router) match(raw *http.Request) *Request {
 
 	req.LogReceived() // TODO: observe returned error val
 	for _, e := range r.routes {
-		if match := e.route.Match(raw.URL.Path); match != nil {
+		if match := e.Route.Match(raw.URL.Path); match != nil {
 			req.RouteMatch = match
 			req.Pipeline = e
 			return req
@@ -191,6 +195,7 @@ func (r *Router) match(raw *http.Request) *Request {
 
 type Stage func(*Request) (Response, error)
 
+// a Response is any struct that can be Rendered into an http response.
 type Response interface {
 	Render(http.ResponseWriter) error
 	Status() int
@@ -198,21 +203,23 @@ type Response interface {
 
 func (router *Router) AddRoute(pattern string, name string, stages ...Stage) {
 	router.routes = append(router.routes, &Pipeline{
-		route:    NewRoute(pattern),
-		name:     name,
-		handlers: stages,
+		Route:    NewRoute(pattern),
+		Name:     name,
+		Handlers: stages,
 	})
+}
+
+type RouteMatch struct {
+	// positional arguments found in the route's regex pattern
+	Args []string
+	// keyword arguments taken from named capture groups found in the route's regex pattern
+	Kwargs map[string]string
+	*Pipeline
 }
 
 // right now, just embeds a regex.  A "name" field should also be added here.
 type Route struct {
 	*regexp.Regexp
-}
-
-type RouteMatch struct {
-	Args   []string
-	Kwargs map[string]string
-	*Pipeline
 }
 
 func NewRoute(pattern string) *Route {
@@ -242,6 +249,15 @@ func (r *Route) Match(target string) *RouteMatch {
 		}
 	}
 	return m
+}
+
+func (r *Route) UnmarshalJSON(b []byte) error {
+	regex, err := regexp.Compile(string(b))
+	if err != nil {
+		return err
+	}
+	*r = Route{regex}
+	return nil
 }
 
 // RequestId is used for tagging each incoming http request for logging
@@ -324,10 +340,12 @@ var ErrBadMethod = Error{
 	Message:    "unsupported http method",
 }
 
-func StagedVerbMux(m map[string]Stage) Stage {
+type VerbMux map[string]Stage
+
+func (m VerbMux) Stage() Stage {
 	return func(req *Request) (Response, error) {
-		if f, ok := m[req.Method]; ok {
-			return f(req)
+		if stage, ok := m[req.Method]; ok {
+			return stage(req)
 		}
 		return nil, ErrBadMethod
 	}
