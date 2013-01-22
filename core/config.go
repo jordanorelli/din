@@ -9,7 +9,8 @@ var Config config
 
 type config struct {
 	Core struct {
-		Addr string `json:"addr"`
+		Addr  string `json:"addr"`
+		Debug bool   `json:"debug"`
 	} `json:"core"`
 }
 

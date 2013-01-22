@@ -330,30 +330,6 @@ func KwargMissing(key string) Error {
 	}
 }
 
-func ParseApiVersion(s string) (ClientApiVersion, error) {
-	t, err := time.Parse("20060102", s)
-	return ClientApiVersion(t), err
-}
-
-// Parses the requested ApiVersion from the query string. If no value is
-// present or the value cannot be parsed the default value ApiOldestVersion is
-// returned.
-// Query value read is 'v', format is 'YYYYMMDD'
-// Inspired by https://developer.foursquare.com/overview/versioning
-func (r *Request) ApiVersion() ClientApiVersion {
-	var s string
-	if err := r.QueryVal("v", &s); err != nil {
-		return ApiOldestVersion
-	}
-
-	version, err := ParseApiVersion(s)
-	if err != nil {
-		return ApiOldestVersion
-	}
-
-	return ClientApiVersion(version)
-}
-
 // tells us whether a request is signed with an csrf token or not.  Right now,
 // this doesn't actually do any *security*, it just checks for the existence of
 // a _din_csrf cookie.
@@ -366,12 +342,3 @@ func (r *Request) IsSigned() bool {
 	}
 	return false
 }
-
-type ClientApiVersion time.Time
-
-func (v ClientApiVersion) String() string {
-	t := time.Time(v)
-	return t.Format("20060102")
-}
-
-var ApiOldestVersion ClientApiVersion
