@@ -11,8 +11,9 @@ var Config config
 
 type config struct {
 	Core struct {
-		Addr  string `json:"addr"`
-		Debug bool   `json:"debug"`
+		Addr         string   `json:"addr"`
+		Debug        bool     `json:"debug"`
+		TemplateDirs []string `json:"template_dirs"`
 	} `json:"core"`
 }
 

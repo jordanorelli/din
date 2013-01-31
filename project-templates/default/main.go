@@ -5,7 +5,7 @@ import (
 )
 
 func HomeHandler(req *din.Request) (din.Response, error) {
-	return din.PlaintextResponseString("Hello, World!", 200), nil
+	return din.NewTemplateResponse("index.html", nil, 200)
 }
 
 func main() {

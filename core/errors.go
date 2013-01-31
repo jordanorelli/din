@@ -49,6 +49,10 @@ func ErrUnknownHandler(name string) error {
 	return errors.New("unknown handler " + name)
 }
 
+func ErrUnkownTemplate(relpath string) error {
+	return errors.New("unknown template " + relpath)
+}
+
 func ErrorStage(err error) Stage {
 	return func(*Request) (Response, error) {
 		return nil, err

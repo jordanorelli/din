@@ -15,8 +15,6 @@ import (
 	"time"
 )
 
-var TemplateRoot string
-
 var templateCache map[string]cachedTemplate
 
 type cachedTemplate struct {
@@ -118,14 +116,13 @@ func RegisterTemplateFn(key string, fn interface{}) {
 	templateFuncs[key] = fn
 }
 
-func readTemplateFile(abspath string) (*template.Template, error) {
-	relpath, err := filepath.Rel(TemplateRoot, abspath)
+func readTemplateFile(relpath string) (*template.Template, error) {
+	abspath, err := locateTemplate(relpath)
 	if err != nil {
-		return nil, fmt.Errorf(`din: unable to resolve template file path %v`, abspath)
+		return nil, err
 	}
 
 	t := template.New(relpath).Funcs(templateFuncs)
-
 	b, err := ioutil.ReadFile(abspath)
 	if err != nil {
 		return nil, err
@@ -146,19 +143,36 @@ func readTemplateFile(abspath string) (*template.Template, error) {
 	return t, nil
 }
 
+func locateTemplate(relpath string) (string, error) {
+	for _, base := range Config.Core.TemplateDirs {
+		p := filepath.Join(base, relpath)
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+			return p, nil
+		}
+	}
+	return "", ErrUnkownTemplate(relpath)
+}
+
 func Template(relpath string) (*template.Template, error) {
-	abspath := filepath.Join(TemplateRoot, relpath)
 	if cached, ok := templateCache[relpath]; ok {
+		abspath, err := locateTemplate(relpath)
+		if err != nil {
+			// TODO: log this.  If we get here, it means we read the template
+			// into cache, and then it was deleted.  We actually know the
+			// template data, but it's gone now; so shit will break if the
+			// server stops.  This should bre reported to the user.
+			return cached.Template, nil
+		}
 		fi, err := os.Stat(abspath)
 		if err != nil {
 			return nil, fmt.Errorf(`din: unable to stat template at path %v: %v`, abspath, err)
 		}
 		if fi.ModTime().After(cached.ModTime()) {
-			return readTemplateFile(abspath)
+			return readTemplateFile(relpath)
 		}
 		return cached.Template, nil
 	}
-	return readTemplateFile(abspath)
+	return readTemplateFile(relpath)
 }
 
 func (r *Router) Template(pattern string, relpath string, code int) {
