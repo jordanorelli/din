@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"time"
 )
 
 func ParseAndRun() {
@@ -35,8 +38,27 @@ func parseRoutesFile() (*Router, error) {
 	return ParseRouteFile(filepath.Join(cwd, "routes.json"))
 }
 
+func darwinOpenBrowser() {
+	p := "http://localhost:8000"
+	fmt.Println("attempting to open a browser to", p)
+	exec.Command("open", p).Start()
+}
+
+// function openBrowser attempts to open the user's web browser to show them
+// the home page, so that they know their project is running.  Right now it
+// only supports OS X.  I don't really know how to do it otherwise, and for
+// Linux I would want to detect a graphical environment, because it would be an
+// annoying thing to try on a server.
+func openBrowser() {
+	switch runtime.GOOS {
+	case "darwin":
+		darwinOpenBrowser()
+	}
+}
+
 func init() {
-	RegisterCommand(Command{
+	var autoBrowse bool
+	cmd := Command{
 		UsageLine: "runserver",
 		Short:     "runs the Din server",
 		Long: `
@@ -45,6 +67,7 @@ I should write some more stuff, But I don't really feel like it I'm pretty
 wasted and I really like absinthe, specifically 'Vieux de Pontarlier' is really
 great.
 `,
+
 		Run: func(cmd *Command, args []string) {
 			router, err := parseRoutesFile()
 			if err != nil {
@@ -59,10 +82,15 @@ great.
 				cmd.Bail(err)
 			}
 			fmt.Println(Config)
+			if autoBrowse {
+				time.AfterFunc(time.Second, openBrowser)
+			}
 			if err := router.ListenAndServe(Config.Core.Addr); err != nil {
 				os.Stderr.WriteString(err.Error())
 				os.Exit(3)
 			}
 		},
-	})
+	}
+	cmd.Flag.BoolVar(&autoBrowse, "open-browser", false, "open a web browser after running the server (OS X only)")
+	RegisterCommand(cmd)
 }

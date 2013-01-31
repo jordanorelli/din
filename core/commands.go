@@ -98,7 +98,13 @@ func (c commandSet) run(args []string) {
 		panic("no command found")
 	}
 	if cmd.Runnable() {
-		cmd.Run(cmd, args[1:])
+		if cmd.CustomFlags {
+			args = args[1:]
+		} else {
+			cmd.Flag.Parse(args[1:])
+			args = cmd.Flag.Args()
+		}
+		cmd.Run(cmd, args)
 		return
 	}
 	fmt.Println(strings.Trim(cmd.Long, " \n"))
